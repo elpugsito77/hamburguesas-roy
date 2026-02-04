@@ -1,6 +1,7 @@
 import streamlit as st
 import random
 import urllib.parse
+from datetime import datetime
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
@@ -23,16 +24,22 @@ st.markdown("""
         font-weight: bold;
         font-size: 1.2rem;
     }
-    .product-card {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid #ddd;
+    .folio-tag {
+        background-color: #ffe0b2;
+        padding: 5px 10px;
+        border-radius: 5px;
+        color: #e65100;
+        font-weight: bold;
+        border: 1px solid #e65100;
+        display: inline-block;
         margin-bottom: 10px;
     }
-    div[data-testid="stExpander"] div[role="button"] p {
-        font-size: 1.1rem;
-        font-weight: bold;
+    .total-box {
+        background-color: #e8f5e9;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #4caf50;
+        margin-top: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -66,11 +73,13 @@ PRODUCTOS = [
 if 'carrito' not in st.session_state:
     st.session_state.carrito = []
 if 'vista' not in st.session_state:
-    st.session_state.vista = 'menu' # menu, producto, carrito
+    st.session_state.vista = 'menu'
 if 'producto_temp' not in st.session_state:
     st.session_state.producto_temp = None
-if 'concepto_unico' not in st.session_state:
-    st.session_state.concepto_unico = ""
+# Generamos el folio UNA VEZ por sesión basado en el momento de inicio
+if 'folio_actual' not in st.session_state:
+    now = datetime.now()
+    st.session_state.folio_actual = f"ROY-{now.strftime('%d%H%M')}"
 
 # --- FUNCIONES ---
 def agregar_al_carrito(producto, cantidad, opciones_seleccionadas, nota):
@@ -89,16 +98,35 @@ def agregar_al_carrito(producto, cantidad, opciones_seleccionadas, nota):
 def eliminar_del_carrito(id_unico):
     st.session_state.carrito = [p for p in st.session_state.carrito if p['id_unico'] != id_unico]
 
-def calcular_total():
+def calcular_subtotal():
     return sum(item['precio'] * item['cantidad'] for item in st.session_state.carrito)
 
-def generar_link_whatsapp(nombre, direccion, metodo_pago, monto_pago, concepto):
+def calcular_costo_envio(subtotal, zona):
+    costo = 0
+    if zona == "Hacienda de las Fuentes":
+        # Cobra 10 si es menos de 100
+        if subtotal < 100:
+            costo = 10
+    elif zona == "Lomas Virreyes":
+        # Cobra 20 si es menos de 200
+        if subtotal < 200:
+            costo = 20
+    elif zona == "Villas del Campo":
+        # Siempre cobra 30
+        costo = 30
+    # "Otro lado" asumimos 0 o a convenir, aquí lo dejamos en 0 para sumar
+    return costo
+
+def generar_link_whatsapp(nombre, direccion, zona, metodo_pago, monto_pago, folio, subtotal, costo_envio, total_final):
     telefono = "5217298179223"
-    mensaje = f"*PEDIDO NUEVO - HAMBURGUESAS ROY* 🍔\n"
+    
+    # Construcción del mensaje
+    mensaje = f"📄 *FOLIO: {folio}*\n"
+    mensaje += f"*PEDIDO - HAMBURGUESAS ROY* 🍔\n"
     mensaje += f"--------------------------------\n"
     mensaje += f"👤 *Cliente:* {nombre}\n"
-    if direccion:
-        mensaje += f"📍 *Dirección:* {direccion}\n"
+    mensaje += f"🏘️ *Zona:* {zona}\n"
+    mensaje += f"📍 *Dirección:* {direccion}\n"
     mensaje += f"--------------------------------\n\n"
     mensaje += f"*ORDEN:*\n"
     
@@ -109,19 +137,23 @@ def generar_link_whatsapp(nombre, direccion, metodo_pago, monto_pago, concepto):
         if item['nota']:
             mensaje += f"   📝 Nota: {item['nota']}\n"
     
-    total = calcular_total()
     mensaje += f"\n--------------------------------\n"
-    mensaje += f"💰 *TOTAL A PAGAR: ${total}*\n"
+    mensaje += f"Subtotal: ${subtotal}\n"
+    if costo_envio > 0:
+        mensaje += f"Envío ({zona}): +${costo_envio}\n"
+    else:
+        mensaje += f"Envío: GRATIS\n"
+    mensaje += f"💰 *TOTAL A PAGAR: ${total_final}*\n"
     mensaje += f"--------------------------------\n"
     
     if metodo_pago == "Efectivo":
-        cambio = float(monto_pago) - total if monto_pago else 0
+        cambio = float(monto_pago) - total_final if monto_pago else 0
         mensaje += f"💵 *PAGO EN EFECTIVO*\n"
         mensaje += f"   Paga con: ${monto_pago}\n"
         mensaje += f"   Cambio: ${cambio}\n"
     else:
         mensaje += f"🏦 *TRANSFERENCIA*\n"
-        mensaje += f"   Concepto: *{concepto}*\n"
+        mensaje += f"   Concepto/Ref: *{folio}*\n"
         
     return f"https://wa.me/{telefono}?text={urllib.parse.quote(mensaje)}"
 
@@ -132,9 +164,10 @@ st.title("🍔 Hamburguesas Roy")
 
 # Botón flotante del carrito
 if st.session_state.carrito:
+    subtotal_actual = calcular_subtotal()
     cols = st.columns([3, 2])
     with cols[0]:
-        st.info(f"🛒 **Total: ${calcular_total()}** ({len(st.session_state.carrito)} items)")
+        st.info(f"🛒 **Subtotal: ${subtotal_actual}**")
     with cols[1]:
         if st.button("Ver Pedido →", type="primary", use_container_width=True):
             st.session_state.vista = 'carrito'
@@ -188,7 +221,6 @@ elif st.session_state.vista == 'producto':
         
         opciones_elegidas = []
         
-        # Lógica para mostrar opciones (Checkbox o Radio)
         if prod.get("opciones"):
             st.write("---")
             if prod.get("tipo_opcion") == "check":
@@ -196,7 +228,7 @@ elif st.session_state.vista == 'producto':
                 st.write("Marca los ingredientes que quieras **QUITAR**:")
                 cols = st.columns(2)
                 for i, op in enumerate(prod["opciones"]):
-                    with cols[i % 2]: # Distribuir en 2 columnas
+                    with cols[i % 2]: 
                         if st.checkbox(op):
                             opciones_elegidas.append(op)
             
@@ -223,13 +255,18 @@ elif st.session_state.vista == 'carrito':
         
     st.header("🛒 Tu Carrito")
     
+    now = datetime.now()
+    folio_actual = f"ROY-{now.strftime('%d%H%M%S')}" 
+    
+    st.markdown(f"<div class='folio-tag'>📄 Folio: {folio_actual}</div>", unsafe_allow_html=True)
+
     if not st.session_state.carrito:
         st.warning("Tu carrito está vacío.")
         if st.button("Ir a pedir algo rico"):
             st.session_state.vista = 'menu'
             st.rerun()
     else:
-        # Lista de items
+        # Listado de productos
         for item in st.session_state.carrito:
             with st.expander(f"{item['cantidad']}x {item['nombre']} - ${item['precio'] * item['cantidad']}", expanded=True):
                 if item['opciones']:
@@ -240,48 +277,72 @@ elif st.session_state.vista == 'carrito':
                     eliminar_del_carrito(item['id_unico'])
                     st.rerun()
         
-        total = calcular_total()
-        st.success(f"### Total a Pagar: ${total}")
+        # --- CÁLCULO DE TOTALES ---
         st.divider()
-        
-        # Formulario de Envío
         st.header("📍 Datos de Entrega")
-        nombre = st.text_input("Tu Nombre")
-        direccion = st.text_area("Dirección completa (Calle, Número, Colonia)", placeholder="O escribe 'Ubicación GPS' si la enviarás por chat.")
         
+        # Selector de Zona
+        zonas = ["Hacienda de las Fuentes", "Lomas Virreyes", "Villas del Campo", "Otro lado"]
+        zona_seleccionada = st.selectbox("Selecciona tu zona:", zonas)
+        
+        nombre = st.text_input("Tu Nombre")
+        direccion_escrita = st.text_area("Dirección exacta (Calle y Número)", placeholder="Ej. Calle Principal #123")
+        
+        # Cálculos de precio
+        subtotal = calcular_subtotal()
+        costo_envio = calcular_costo_envio(subtotal, zona_seleccionada)
+        total_final = subtotal + costo_envio
+        
+        # Mostrar desglose bonito
+        st.markdown(f"""
+        <div class="total-box">
+            <p style="margin:0;">Subtotal: <b>${subtotal}</b></p>
+            <p style="margin:0;">Costo de envío: <b>${costo_envio}</b> <small>({zona_seleccionada})</small></p>
+            <hr style="margin:10px 0;">
+            <h3 style="margin:0; color: #2e7d32;">Total a Pagar: ${total_final}</h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Avisos de envío según zona
+        if zona_seleccionada == "Hacienda de las Fuentes" and subtotal < 100:
+            st.caption("ℹ️ Envío $10 porque la compra es menor a $100.")
+        elif zona_seleccionada == "Lomas Virreyes" and subtotal < 200:
+            st.caption("ℹ️ Envío $20 porque la compra es menor a $200.")
+        elif zona_seleccionada == "Villas del Campo":
+            st.caption("ℹ️ Envío fijo de $30 a Villas.")
+        elif zona_seleccionada == "Hacienda de las Fuentes" and subtotal >= 100:
+             st.caption("✅ ¡Envío GRATIS por compra mayor a $100!")
+        elif zona_seleccionada == "Lomas Virreyes" and subtotal >= 200:
+             st.caption("✅ ¡Envío GRATIS por compra mayor a $200!")
+
         st.header("💳 Método de Pago")
         metodo = st.radio("¿Cómo vas a pagar?", ["Efectivo", "Transferencia"], horizontal=True)
         
         monto_pago = 0
-        concepto = ""
         
         if metodo == "Efectivo":
-            monto_str = st.text_input("¿Con cuánto pagas? (Ej. 200, 500)", value="")
+            monto_str = st.text_input("¿Con cuánto pagas?", value="")
             try:
                 if monto_str:
                     monto_pago = float(monto_str)
-                    if monto_pago < total:
-                        st.error(f"El monto debe ser mayor o igual a ${total}")
+                    if monto_pago < total_final:
+                        st.error(f"El monto debe ser mayor o igual a ${total_final}")
                     else:
-                        st.success(f"Tu cambio será: ${monto_pago - total}")
+                        st.success(f"Tu cambio será: ${monto_pago - total_final}")
             except:
-                st.warning("Por favor ingresa solo números.")
+                st.warning("Ingresa solo números.")
         else:
-            if not st.session_state.concepto_unico:
-                st.session_state.concepto_unico = f"#ROY-{random.randint(1000,9999)}"
-            concepto = st.session_state.concepto_unico
-            st.info(f"⚠️ Usa este concepto en tu transferencia: **{concepto}**")
+            st.info(f"⚠️ Usa este folio en el concepto de tu transferencia: **{folio_actual}**")
             
         st.write("---")
         
-        # Botón Final
         if st.button("✅ Enviar Pedido por WhatsApp", type="primary", use_container_width=True):
             if not nombre:
                 st.error("Falta tu nombre.")
-            elif not direccion:
-                st.error("Falta la dirección.")
-            elif metodo == "Efectivo" and (monto_pago < total):
-                st.error("Revisa el monto de pago en efectivo.")
+            elif not direccion_escrita:
+                st.error("Falta escribir la dirección.")
+            elif metodo == "Efectivo" and (monto_pago < total_final):
+                st.error("Revisa el monto de pago.")
             else:
-                link = generar_link_whatsapp(nombre, direccion, metodo, monto_pago, concepto)
+                link = generar_link_whatsapp(nombre, direccion_escrita, zona_seleccionada, metodo, monto_pago, folio_actual, subtotal, costo_envio, total_final)
                 st.markdown(f'<a href="{link}" target="_blank" style="display: inline-block; padding: 12px 20px; background-color: #25D366; color: white; text-align: center; text-decoration: none; font-size: 16px; border-radius: 5px; width: 100%;">👉 Toca aquí para abrir WhatsApp</a>', unsafe_allow_html=True)
