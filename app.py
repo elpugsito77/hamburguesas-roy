@@ -41,6 +41,12 @@ st.markdown("""
         border: 1px solid #4caf50;
         margin-top: 10px;
     }
+    /* Centrar logo */
+    .logo-container {
+        display: flex;
+        justify_content: center;
+        margin-bottom: 20px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -118,7 +124,8 @@ def calcular_costo_envio(subtotal, zona):
     return costo
 
 def generar_link_whatsapp(nombre, direccion, zona, metodo_pago, monto_pago, folio, subtotal, costo_envio, total_final):
-    telefono = "5217298179223"
+    # Número actualizado
+    telefono = "5215669328454"
     
     # Construcción del mensaje
     mensaje = f"📄 *FOLIO: {folio}*\n"
@@ -159,8 +166,38 @@ def generar_link_whatsapp(nombre, direccion, zona, metodo_pago, monto_pago, foli
 
 # --- INTERFAZ PRINCIPAL ---
 
-# 1. ENCABEZADO
-st.title("🍔 Hamburguesas Roy")
+# 1. ENCABEZADO (CON LOGO SVG)
+# Logo vectorial creado con código
+st.markdown("""
+<div class="logo-container" style="text-align: center;">
+    <svg width="300" height="150" viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg">
+        <!-- Pan Superior -->
+        <path d="M75 70 Q150 10 225 70" fill="#F4A460" stroke="#8B4513" stroke-width="3"/>
+        <!-- Ajonjolí -->
+        <circle cx="110" cy="45" r="2" fill="#FFE4B5"/>
+        <circle cx="130" cy="35" r="2" fill="#FFE4B5"/>
+        <circle cx="160" cy="35" r="2" fill="#FFE4B5"/>
+        <circle cx="190" cy="45" r="2" fill="#FFE4B5"/>
+        
+        <!-- Lechuga -->
+        <path d="M70 70 Q85 85 100 70 T130 70 T160 70 T190 70 T230 70" fill="#32CD32" stroke="#006400" stroke-width="2"/>
+        
+        <!-- Carne -->
+        <rect x="75" y="75" width="150" height="15" rx="5" fill="#8B4513"/>
+        
+        <!-- Queso (Triángulo saliendo) -->
+        <path d="M90 85 L110 85 L100 95 Z" fill="#FFD700"/>
+        <path d="M190 85 L210 85 L200 95 Z" fill="#FFD700"/>
+
+        <!-- Pan Inferior -->
+        <path d="M75 95 Q150 115 225 95 L225 90 L75 90 Z" fill="#F4A460" stroke="#8B4513" stroke-width="3"/>
+        
+        <!-- Texto ROY -->
+        <text x="150" y="140" font-family="Arial, sans-serif" font-size="40" font-weight="bold" fill="#D35400" text-anchor="middle" stroke="white" stroke-width="1">ROY</text>
+        <text x="150" y="140" font-family="Arial, sans-serif" font-size="40" font-weight="bold" fill="#D35400" text-anchor="middle">ROY</text>
+    </svg>
+</div>
+""", unsafe_allow_html=True)
 
 # Botón flotante del carrito
 if st.session_state.carrito:
