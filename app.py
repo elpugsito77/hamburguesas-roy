@@ -167,10 +167,10 @@ def generar_link_whatsapp(nombre, direccion, zona, metodo_pago, monto_pago, foli
 # --- INTERFAZ PRINCIPAL ---
 
 # 1. ENCABEZADO (CON LOGO SVG)
-# Logo vectorial creado con código
+# Logo vectorial actualizado con nombre completo
 st.markdown("""
 <div class="logo-container" style="text-align: center;">
-    <svg width="300" height="150" viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg">
+    <svg width="300" height="160" viewBox="0 0 300 160" xmlns="http://www.w3.org/2000/svg">
         <!-- Pan Superior -->
         <path d="M75 70 Q150 10 225 70" fill="#F4A460" stroke="#8B4513" stroke-width="3"/>
         <!-- Ajonjolí -->
@@ -192,9 +192,9 @@ st.markdown("""
         <!-- Pan Inferior -->
         <path d="M75 95 Q150 115 225 95 L225 90 L75 90 Z" fill="#F4A460" stroke="#8B4513" stroke-width="3"/>
         
-        <!-- Texto ROY -->
-        <text x="150" y="140" font-family="Arial, sans-serif" font-size="40" font-weight="bold" fill="#D35400" text-anchor="middle" stroke="white" stroke-width="1">ROY</text>
-        <text x="150" y="140" font-family="Arial, sans-serif" font-size="40" font-weight="bold" fill="#D35400" text-anchor="middle">ROY</text>
+        <!-- Texto HAMBURGUESAS ROY (Ajustado) -->
+        <text x="150" y="145" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#D35400" text-anchor="middle" stroke="white" stroke-width="1">HAMBURGUESAS ROY</text>
+        <text x="150" y="145" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#D35400" text-anchor="middle">HAMBURGUESAS ROY</text>
     </svg>
 </div>
 """, unsafe_allow_html=True)
